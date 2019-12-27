@@ -1,7 +1,9 @@
-{-# LANGUAGE DataKinds          #-}
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE KindSignatures     #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE GADTs                #-}
+{-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE StandaloneDeriving   #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE UndecidableInstances #-}
 module STLCC.Util.Nat where
 
 
@@ -16,6 +18,23 @@ import           Numeric.Natural
 -- | Inductively defined natural numbers. Intended for use at the type
 -- level only.
 data Nat = Z | S !Nat
+
+
+type family NatPlus (m :: Nat) (n :: Nat) :: Nat where
+  NatPlus 'Z y = y
+  -- This eq needs undecidable instances
+  NatPlus ('S x) y = 'S (NatPlus x y)
+  -- Important: This eq *must* be defined last, so that we match on
+  -- the second argument as late as possible.
+  NatPlus x 'Z = x
+
+
+
+type family NatLTE (m :: Nat) (n :: Nat) :: Bool where
+  NatLTE 'Z  x        = 'True
+  NatLTE ('S x) 'Z     = 'False
+  NatLTE ('S x) ('S y) = NatLTE x y
+
 
 -- | Proof that a given typelevel natural is smaller than some known
 -- (or knowable) natural number.
