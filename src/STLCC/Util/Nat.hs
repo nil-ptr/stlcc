@@ -9,6 +9,10 @@ module STLCC.Util.Nat where
 
 import           Numeric.Natural
 
+-- For a specific RULES definition
+import qualified Unsafe.Coerce   as Coerce (unsafeCoerce)
+
+
 ----------------------------------------------------------------------
 ---                           Index Types                          ---
 ----------------------------------------------------------------------
@@ -60,9 +64,20 @@ class KnownSNat (n :: Nat) where
 instance KnownSNat 'Z where
   snat = SZero
   {-# INLINE snat #-}
+
 instance KnownSNat n => KnownSNat ('S n) where
   snat = SSucc snat
   {-# INLINE snat #-}
+
+
+snatToFin :: SNat n -> Fin ('S n)
+snatToFin SZero      = FZ
+snatToFin (SSucc sn) = FS (snatToFin sn)
+{-# INLINABLE snatToFin #-}
+
+maxFin :: KnownSNat n => Fin ('S n)
+maxFin = snatToFin snat
+{-# INLINE maxFin #-}
 
 snatToNatural :: SNat n -> Natural
 snatToNatural SZero     = 0
@@ -73,3 +88,19 @@ finToNatural :: Fin n -> Natural
 finToNatural FZ     = 0
 finToNatural (FS n) = 1 + finToNatural n
 {-# INLINABLE finToNatural #-}
+
+incrFin :: Fin n -> Fin ('S n)
+incrFin FZ     = FZ
+incrFin (FS x) = FS (incrFin x)
+-- This function does no _useful_ work. All it's really doing is
+-- changing the type of the argument. The type itself doesn't exist at
+-- runtime though, so let's make sure this function is never around at
+-- runtime either.
+{-# NOINLINE incrFin #-}
+{-# RULES "incrFin/nop" forall x. incrFin x = Coerce.unsafeCoerce x #-}
+
+reduceFinBy :: Integral a => a -> Fin n -> Fin n
+reduceFinBy _ FZ = FZ
+reduceFinBy x (FS ff) | x >= 0 = incrFin (reduceFinBy (x - 1) ff)
+                      | otherwise = (FS ff)
+{-# INLINABLE reduceFinBy #-}
