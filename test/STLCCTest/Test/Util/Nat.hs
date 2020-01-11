@@ -1,4 +1,7 @@
-{-# LANGUAGE DataKinds, BlockArguments, TypeApplications, GADTs, PatternSynonyms #-}
+{-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE GADTs            #-}
+{-# LANGUAGE PatternSynonyms  #-}
+{-# LANGUAGE TypeApplications #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -20,9 +23,9 @@ module STLCCTest.Test.Util.Nat
 import           Test.Hspec
 import           Test.QuickCheck
 
-import  STLCCTest.Generators.Nat()
+import           STLCCTest.Generators.Nat ()
 
-import  STLCC.Util.Nat
+import           STLCC.Util.Nat
 
 
 ----------------------------------------------------------------------
@@ -62,13 +65,13 @@ pattern FinEleven x = x
 finSpec :: Spec
 finSpec = do
   describe "types" $
-    describe "Fin" do
+    describe "Fin" $ do
       it "contains no values gte to its typelevel bound" $
         property $ \(FinTen x) ->
                      finToNatural x < 10
 
-  describe "functions" do
-    describe "maxFin" do
+  describe "functions" $ do
+    describe "maxFin" $ do
       it "equals the typlevel bound minus 1" $
         finToNatural (FinEleven maxFin)
         `shouldBe`
@@ -77,12 +80,13 @@ finSpec = do
       it "is gte to all other values of the same type" $
         property $ \(FinTen x) ->
                      finToNatural x <= finToNatural (FinTen maxFin)
-    describe "incrFin" do
+
+    describe "incrFin" $ do
       it "does not change the value of term it is applied to" $
         property $ \(FinTen x) ->
                      finToNatural x == finToNatural (incrFin x)
 
-    describe "enumFinTo" do
+    describe "enumFinTo" $ do
       it "produces a list with length equal to the value of its argument + 1" $
         property $ \(FinTen x) ->
                      length (enumFinTo x)
@@ -123,7 +127,7 @@ finSpec = do
                        &&
                        x == last ls
 
-    describe "reduceFinBy" do
+    describe "reduceFinBy" $ do
 
       it "does nothing, given a negative argument" $
         property $ \(FinTen x) (Negative i) ->
@@ -131,7 +135,7 @@ finSpec = do
 
       it "for a positive n: 'reduceFinBy n x' equals the nth pred of x" $
         let fspred :: Fin ('S ('S n)) -> Fin ('S n)
-            fspred FZ = FZ
+            fspred FZ      = FZ
             fspred (FS fn) = fn
 
             repeatFsPred :: Int -> Fin ('S ('S n)) -> Fin ('S ('S n))
