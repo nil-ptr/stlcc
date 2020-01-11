@@ -13,13 +13,8 @@
 -- Tests for the "STLCC.Util.Nat" module.
 module STLCCTest.Test.Util.Nat
   (
-  -- * The whole suite.
     natSpec
-
-    -- * Specific functionality
-  , finSpec
-
-) where
+  ) where
 
 
 import           Test.Hspec
@@ -34,7 +29,7 @@ import  STLCC.Util.Nat
 ---                            Nat Spec                            ---
 ----------------------------------------------------------------------
 
-
+-- | 'Spec' for the "STLCC.Util.Nat" module.
 natSpec :: Spec
 natSpec = describe "STLCC.Util.Nat" finSpec
 
@@ -51,12 +46,19 @@ type NatTen = NatPlus NatFive NatFive
 
 type NatEleven = NatPlus NatOne NatTen
 
+
+-- | Do nothing pattern intended to monomorphise the type of the 'Fin'
+-- matched.
 pattern FinTen :: Fin NatTen -> Fin NatTen
 pattern FinTen x = x
 
+-- | Do nothing pattern intended to monomorphise the type of the 'Fin'
+-- matched.
 pattern FinEleven :: Fin NatEleven -> Fin NatEleven
 pattern FinEleven x = x
 
+-- | Spec for the 'Fin' type and associated functions. This is the
+-- main piece of functionality in the module.
 finSpec :: Spec
 finSpec = do
   describe "types" $
