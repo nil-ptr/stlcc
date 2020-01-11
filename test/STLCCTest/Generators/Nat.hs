@@ -1,5 +1,10 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE DataKinds, FlexibleInstances, MultiParamTypeClasses, TypeApplications, ScopedTypeVariables #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -15,19 +20,15 @@
 -- 'Arbitrary' instance for 'Fin'.
 module STLCCTest.Generators.Nat where
 
+import           STLCC.Util.Nat
+import           Test.QuickCheck
 
-import  STLCC.Util.Nat
-import  Test.QuickCheck
-
-
-instance KnownSNat n => Arbitrary (Fin ('S n)) where
+instance KnownSNat n =>  Arbitrary (Fin ('S n)) where
   arbitrary = do
     let maxval :: Int
         maxval = fromInteger . toInteger . snatToNatural $ snat @n
     x <- choose (0, maxval)
-    pure (reduceFinBy x maxFin)
+    pure (reduceFinBy (x-1) maxFin)
 
-  shrink fn =
-    let minval :: Int
-        minval = fromInteger . toInteger . finToNatural $ fn
-    in flip reduceFinBy fn <$> enumFromThenTo (minval-1) (minval - 2) 0
+  shrink FZ      = []
+  shrink (FS fn) = enumFinTo (incrFin fn)

@@ -1,6 +1,10 @@
 module Main where
 
-import STLCCTest.Generators.ASTGen
+import           STLCCTest.Test.Util.Nat (natSpec)
+
+import           Test.Hspec
 
 main :: IO ()
-main = putStrLn "under construction"
+main = do
+  putStrLn "here"
+  hspec $ natSpec

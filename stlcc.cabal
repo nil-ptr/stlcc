@@ -52,7 +52,10 @@ test-suite unit-tests
   hs-source-dirs:      test
   build-depends:       stlcc,
                        hspec,
-                       QuickCheck
+                       QuickCheck,
+                       vector
+  other-modules: STLCCTest.Test.Util.Nat
+               , STLCCTest.Generators.Nat
 
 
                        
