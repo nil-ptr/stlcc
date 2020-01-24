@@ -1,7 +1,8 @@
+{-# LANGUAGE DataKinds #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  STLCCTest.Generators.ASTGen
--- Copyright   :  Nils Gustafsson 2019
+-- Copyright   :  Nils Gustafsson 2019-2020
 -- License     :  Apache-2.0 (see the LICENSE file in the distribution)
 --
 -- Maintainer  :  nils.gustafsson@bredband2.com
@@ -14,11 +15,18 @@ module STLCCTest.Generators.ASTGen
   (
   -- * Exported Items
     generateIndicesSized
+  , generateIndicesSized'
   , mkParentListSized
   , genASTShapeSequence
-) where
+  , genASTShapeSequence'
+  ) where
 
-import  Test.QuickCheck.Gen
+
+import           Test.QuickCheck.Gen
+
+import           Data.Vector.Unboxed (Vector)
+import qualified Data.Vector.Unboxed as Vector
+
 
 
 ----------------------------------------------------------------------
@@ -30,11 +38,19 @@ generateIndicesSized :: Int -- ^ Size parameter
                      -> Int -- ^ Maximum arity
                      -> Gen [Int]
 generateIndicesSized s m = inner 1
-  where inner n | n < s = do
+  where inner n | n <= s = do
                     x <- choose (0,(m-1)*n)
                     xs <- inner (n + 1)
                     pure (x : xs)
                 | otherwise = pure []
+
+generateIndicesSized' :: Int -- ^ Size parameter
+                      -> Int -- ^ Maximum arity
+                      -> Gen (Vector Int)
+generateIndicesSized' s m = inner s
+  where inner n = Vector.generateM n go
+
+        go n = choose (0,(m-1)*(n+1))
 
 
 -- | Construct the parent list needed.
@@ -48,7 +64,19 @@ mkParentListSized s p
                  | gs > 0 = go (gs - 1) p
                  | otherwise = id
 
+genASTShapeSequence'  :: Int -- ^ Maximum arity
+                      -> Gen (Vector Int)
+genASTShapeSequence' m = sized inner
+  where inner n = do
+          let pl = mkParentListSized n m
+          ix <- generateIndicesSized' n m
+          pure (go ix pl)
 
+        go ix pl = Vector.unfoldrN (Vector.length ix) (buildf ix) (0,pl)
+
+        buildf _ (_,[]) = Nothing
+        buildf ix (n,xs) = let (h,(t:ts)) = splitAt (ix Vector.! n) xs
+                           in Just (t,((n+1),h ++ ts))
 
 
 genASTShapeSequence :: Int -- ^ Maximum arity

@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE EmptyCase            #-}
 {-# LANGUAGE GADTs                #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE StandaloneDeriving   #-}
@@ -52,7 +53,7 @@ type family NatPlus (m :: Nat) (n :: Nat) :: Nat where
   -- the second argument as late as possible.
   NatPlus x 'Z = x
 
--- | A natural number guaranteed to be less than or equal to a given
+-- | A natural number guaranteed to be less than a given
 -- typelevel bound.
 data Fin (n :: Nat) where
   FZ :: Fin ('S n)
@@ -63,6 +64,16 @@ deriving instance Show (Fin n)
 
 -- | Derived instance.
 deriving instance Eq (Fin n)
+
+-- | The 'Fin' promise is that it's isomorphic to some 'SNat' whose
+-- index is /strictly/ less than the given index of the given
+-- 'Fin'. No 'SNat' could have a 'Nat' kinded index strictly smaller
+-- than zero.
+absurdFinZero :: Fin 'Z -> a
+absurdFinZero x =
+  case x of {}
+
+
 
 --- Singletons -------------------------------------------------------
 
@@ -139,6 +150,19 @@ incrFin (FS x) = FS (incrFin x)
 {-# NOINLINE incrFin #-}
 {-# RULES "incrFin/nop" forall x. incrFin x = Coerce.unsafeCoerce x #-}
 
+-- | Given a proof that @m@ is less than or equal to @n@, increase the
+-- bound on a 'Fin' from @m@ to @n@.
+incrFinTo :: NatLTE m n -> Fin ('S m) -> Fin ('S n)
+incrFinTo _ FZ                  = FZ
+incrFinTo LTEZero (FS fn)       = absurdFinZero fn
+incrFinTo (LTESucc ltp) (FS fn) = FS (incrFinTo ltp fn)
+-- This function is a do nothing function for much the same reasons as
+-- incrFin. So we can arguably replace it with unsafeCoerce for the
+-- same reasons.
+{-# NOINLINE incrFinTo #-}
+{-# RULES "incrFinTo/nop" forall p x. incrFinTo p x = Coerce.unsafeCoerce x #-}
+
+
 -- | Reduces a 'Fin' by stripping off 'FS' constructors. The first
 -- argument dictates how many constructors to remove. A negative
 -- argument is treated as 0.
@@ -172,6 +196,12 @@ natLTEtoFin :: NatLTE m n -> Fin ('S n)
 natLTEtoFin LTEZero     = FZ
 natLTEtoFin (LTESucc n) = FS (natLTEtoFin n)
 {-# INLINABLE natLTEtoFin #-}
+
+-- | Anything that reduces to a proof that some non-zero natural
+-- number is less than or equal to zero is clearly absurd.
+absurdNatLTE :: NatLTE ('S n) 'Z -> a
+absurdNatLTE x =
+  case x of {}
 
 ----------------------------------------------------------------------
 ---                      Existentials For Nats                     ---
@@ -212,3 +242,18 @@ finFromNatural n | n > 0 = case finFromNatural (n - 1) of
                              MkForSomeNat fn -> MkForSomeNat (FS fn)
                  | otherwise = MkForSomeNat @('S 'Z) FZ
 {-# INLINABLE finFromNatural #-}
+
+----------------------------------------------------------------------
+---               General SNat to/from Fin Conversion              ---
+----------------------------------------------------------------------
+
+
+snatFinForward :: ForSomeNatLTE n SNat -> Fin ('S n)
+snatFinForward (MkForSomeNatLTE p sn) = incrFinTo p (snatToFin sn)
+
+snatFinBackward :: Fin ('S n) -> ForSomeNatLTE n SNat
+snatFinBackward FZ = MkForSomeNatLTE LTEZero SZero
+snatFinBackward (FS FZ) = MkForSomeNatLTE (LTESucc LTEZero) (SSucc SZero)
+snatFinBackward (FS fn@(FS _)) =
+  case snatFinBackward fn of
+    MkForSomeNatLTE p sn -> MkForSomeNatLTE (LTESucc p) (SSucc sn)
