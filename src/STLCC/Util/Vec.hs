@@ -1,8 +1,20 @@
 {-# LANGUAGE DataKinds      #-}
 {-# LANGUAGE GADTs          #-}
 {-# LANGUAGE KindSignatures #-}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  STLCC.Util.Vec
+-- Copyright   :  Nils Gustafsson 2019-2020
+-- License     :  Apache-2.0 (see the LICENSE file in the distribution)
+--
+-- Maintainer  :  nils.gustafsson@bredband2.com
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Length indexed lists.
 module STLCC.Util.Vec where
 
+import           Prelude        hiding (map)
 import           STLCC.Util.Nat
 
 -- | The good old length indexed list.
@@ -17,10 +29,11 @@ infixr 5 :::
 
 -- | Fetch a given element from a 'Vec'. The zeroth element is
 -- precisely the head of the 'Vec'.
-(!!!) :: Vec s ('S n) -> Fin ('S n) -> s
-(x ::: _)  !!!  FZ     = x
+(!!!) :: Vec s n -> Fin n -> s
+VNil       !!! fn             = absurdFinZero fn
+(x ::: _)  !!!  FZ            = x
 (_ ::: xs) !!! (FS fn@(FS _)) = xs !!! fn
-(_ ::: xs) !!! (FS fn@(FZ)) = xs !!! fn
+(_ ::: xs) !!! (FS fn@(FZ))   = xs !!! fn
 {-# INLINABLE (!!!) #-}
 
 infixl 7 !!!
@@ -52,3 +65,8 @@ findInVec needle (x ::: xs)
                     Just fn -> Just (FS fn)
                     Nothing -> Nothing
 {-# INLINABLE findInVec #-}
+
+map :: (a -> b) -> Vec a n -> Vec b n
+map f (x ::: xs) = (f x ::: map f xs)
+map _ VNil       = VNil
+{-# INLINABLE map #-}
