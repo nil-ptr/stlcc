@@ -1,10 +1,11 @@
 module Main where
 
-import           STLCCTest.Test.Util.Nat (natSpec)
-
+import           STLCCTest.Generators.Vec
+import           STLCCTest.Test.Parse     (parserSpec)
+import           STLCCTest.Test.Util.Nat  (natSpec)
 import           Test.Hspec
 
 main :: IO ()
-main = do
-  putStrLn "here"
-  hspec $ natSpec
+main = hspec $ do
+  natSpec
+  parserSpec

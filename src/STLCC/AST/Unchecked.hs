@@ -11,6 +11,8 @@ import           Data.Void
 import           Numeric.Natural
 import           STLCC.AST.Generic
 import           STLCC.Util.Nat
+import           STLCC.Util.Vec
+
 
 ----------------------------------------------------------------------
 ---                               Tag                              ---
@@ -71,55 +73,30 @@ pattern UAliasTy s = GTGlobal s
            , UArrTy
            , UAliasTy #-}
 
+instance Eq (UTyExp n) where
+  UNatTy == UNatTy = True
+  UIntTy == UIntTy = True
+  UBoolTy == UBoolTy = True
+  (UAliasTy a) == (UAliasTy b) = a == b
+  (UArrTy da cda) == (UArrTy db cdb)= da == db
+                                      && cda == cdb
+  _ == _ = False
+
+utyexpSize :: UTyExp n -> Natural
+utyexpSize = go 0
+  where go :: Natural -> UTyExp k -> Natural
+        go a UNatTy        = 1 + a
+        go a UIntTy        = 1 + a
+        go a UBoolTy       = 1 + a
+        go a (UAliasTy _)  = 1 + a
+        go a (UArrTy d cd) = go (go (1 + a) d) cd
+
 ----------------------------------------------------------------------
 ---                      Unchecked Expressions                     ---
 ----------------------------------------------------------------------
 
 
 type UExp (n :: Nat) = GExp ('Unchecked n)
-instance Show (GExp ('Unchecked n)) where
-
-  showsPrec d (UApp l r) = showParen (d > 10) $
-    showString "UApp "
-    . showsPrec 11 l
-    . showString " "
-    . showsPrec 11 r
-  showsPrec d (ULam s _ r) = showParen (d > 10) $
-    showString "ULam "
-    . showsPrec 11 s
-    . showString " _ "
-    . showsPrec 11 r
-  showsPrec d (UVar fn) = showParen (d > 10) $
-    showString "UVar " . showsPrec 11 fn
-  showsPrec d (UGlobal s) = showParen (d > 10) $
-    showString "UGlobal \""
-    . showsPrec 11 s
-    . showString "\""
-  showsPrec d (UAnnot t _) = showParen (d > 10) $
-    showString "UAnnot "
-    . showsPrec 11 t
-    . showString " _"
-  showsPrec d (UNatE n) = showParen (d > 10) $
-    showString "UNatE "
-    . showsPrec 11 n
-  showsPrec d (UIntE i) = showParen (d > 10) $
-    showString "UIntE "
-    . showsPrec 11 i
-  showsPrec d (UBoolE b) = showParen (d > 10) $
-    showString "UBoolE "
-    . showsPrec 11 b
-
-pretty :: UExp n -> String
-pretty (UApp l r@(UApp _ _)) = pretty l ++ " (" ++ pretty r ++ ")"
-pretty (UApp l r)   = pretty l ++ " " ++ pretty r
-pretty (ULam s _ e) = "(λ" ++ unpack s ++
-                    ". " ++ pretty e ++ ")"
-pretty (UVar fn)    = "#" ++ show (finToNatural fn)
-pretty (UGlobal s)  = "«" ++ unpack s ++ "»"
-pretty (UAnnot t _) = pretty t
-pretty (UNatE n)    = show n
-pretty (UIntE i)    = show i
-pretty (UBoolE b)   = show b
 
 type instance GEAppFam    ('Unchecked n) = ()
 type instance GELamFam    ('Unchecked n) = (Text, Maybe (UTyExp n))
@@ -165,6 +142,117 @@ pattern UBoolE n = GEConst () (UBoolC n)
              , UIntE
              , UBoolE
              #-}
+
+instance Eq (UExp n) where
+  (UBoolE a) == (UBoolE b) = a == b
+  (UIntE a) == (UIntE b) = a == b
+  (UNatE a) == (UNatE b) = a == b
+  (UAnnot ta tya) == (UAnnot tb tyb) = ta == tb
+                                       && tya ==  tyb
+  (UGlobal a) == (UGlobal b) = a == b
+  (UVar fna) == (UVar fnb) = fna == fnb
+  (ULam sa tya ea) == (ULam sb tyb eb) = sa == sb
+                                         && tya == tyb
+                                         && ea ==  eb
+  (UApp la ra) == (UApp lb rb) = la == lb
+                                 && ra == rb
+  _ == _  = False
+
+
+uexpSize :: UExp n -> Natural
+uexpSize = go 0
+  where go :: Natural -> UExp k -> Natural
+        go a (UApp l r)    = go (1 + go a l) r
+        go a (ULam _ t e)  = go (1 + a + mbe utyexpSize t) e
+        go a (UVar _)      = 1 + a
+        go a (UBoolE _)    = 1 + a
+        go a (UIntE _)     = 1 + a
+        go a (UNatE _)     = 1 + a
+        go a (UGlobal _)   = 1 + a
+        go a (UAnnot t ty) = go (1 + a + utyexpSize ty) t
+
+        mbe _ Nothing  = 0
+        mbe f (Just t) = f t
+
+----------------------------------------------------------------------
+---                            Printing                            ---
+----------------------------------------------------------------------
+
+instance Show (GExp ('Unchecked n)) where
+
+  showsPrec d (UApp l r) = showParen (d > 10) $
+    showString "UApp "
+    . showsPrec 11 l
+    . showString " "
+    . showsPrec 11 r
+  showsPrec d (ULam s _ r) = showParen (d > 10) $
+    showString "ULam "
+    . showsPrec 11 s
+    . showString " _ "
+    . showsPrec 11 r
+  showsPrec d (UVar fn) = showParen (d > 10) $
+    showString "UVar " . showsPrec 11 fn
+  showsPrec d (UGlobal s) = showParen (d > 10) $
+    showString "UGlobal \""
+    . showsPrec 11 s
+    . showString "\""
+  showsPrec d (UAnnot t _) = showParen (d > 10) $
+    showString "UAnnot "
+    . showsPrec 11 t
+    . showString " _"
+  showsPrec d (UNatE n) = showParen (d > 10) $
+    showString "UNatE "
+    . showsPrec 11 n
+  showsPrec d (UIntE i) = showParen (d > 10) $
+    showString "UIntE "
+    . showsPrec 11 i
+  showsPrec d (UBoolE b) = showParen (d > 10) $
+    showString "UBoolE "
+    . showsPrec 11 b
+
+pretty :: UExp n -> String
+pretty (UApp l r@(UApp _ _)) = pretty l ++ " (" ++ pretty r ++ ")"
+pretty (UApp l r)   = pretty l ++ " " ++ pretty r
+pretty (ULam s _ e) = "(λ" ++ unpack s ++
+                    ". " ++ pretty e ++ ")"
+pretty (UVar fn)    = "#" ++ show (finToNatural fn)
+pretty (UGlobal s)  = "«" ++ unpack s ++ "»"
+pretty (UAnnot t _) = pretty t
+pretty (UNatE n)    = show n
+pretty (UIntE i)    = show i
+pretty (UBoolE b)   = show b
+
+prettyNamed :: UExp 'Z -> String
+prettyNamed (UApp l r@(UApp _ _)) = prettyNamed l ++ " (" ++ prettyNamed r ++ ")"
+prettyNamed (UApp l r)   = prettyNamed l ++ " " ++ prettyNamed r
+prettyNamed (ULam s _ e) = "(λ" ++ unpack s ++
+                    ". " ++ prettyOpenNamed (s:::VNil) e ++ ")"
+prettyNamed (UVar fn)    = "#" ++ show (finToNatural fn)
+prettyNamed (UGlobal s)  = unpack s
+prettyNamed (UAnnot t _) = prettyNamed t
+prettyNamed (UNatE n)    = show n
+prettyNamed (UIntE i)    = show i
+prettyNamed (UBoolE b)   = show b
+
+prettyOpenNamed :: Vec Text ('S n) -> UExp ('S n) -> String
+prettyOpenNamed v (UApp l r@(UApp _ _)) =
+  prettyOpenNamed v l ++ " (" ++
+  prettyOpenNamed v r ++ ")"
+prettyOpenNamed v (UApp l r)   =
+  prettyOpenNamed v l ++ " " ++
+  prettyOpenNamed v r
+prettyOpenNamed v (ULam s _ e) =
+  "(λ" ++ unpack s ++ ". " ++
+  prettyOpenNamed (s:::v) e ++ ")"
+prettyOpenNamed v (UVar fn)    =
+  unpack (v !!! fn)
+prettyOpenNamed _ (UGlobal s)  = unpack s
+prettyOpenNamed v (UAnnot t _) = prettyOpenNamed v t
+prettyOpenNamed _ (UNatE n)    = show n
+prettyOpenNamed _ (UIntE i)    = show i
+prettyOpenNamed _ (UBoolE b)   = show b
+
+
 
 -- (\x. plus x 1)
 

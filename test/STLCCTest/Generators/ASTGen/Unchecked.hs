@@ -143,23 +143,21 @@ deShadow = inner VNil
 ----------------------------------------------------------------------
 
 instance UExpGen 'LamConstApp 'Z where
-  build0 (GC 0) = UIntE <$> arbitrary
-  build0 (GC 1) = UIntE <$> arbitrary
+  build0 (GC 0) = UBoolE <$> arbitrary
+  build0 (GC 1) = UBoolE <$> arbitrary
 
   build1 (GC 0) = do
-    -- s <- elements ['a'..'z']
-    s <- elements ['a', 'b']
+    s <- elements ['a'..'z']
     pure (Right (ULam (pack [s]) Nothing))
 
   build2 (GC 0) = pure UApp
 
 instance KnownSNat n => UExpGen 'LamConstApp ('S n) where
-  build0 (GC 0) = UIntE <$> arbitrary
+  build0 (GC 0) = UBoolE <$> arbitrary
   build0 (GC 1) = UVar <$> arbitrary
 
   build1 (GC 0) = do
-    --    s <- elements ['a'..'z']
-    s <- elements ['a', 'b']
+    s <- elements ['a'..'z']
     pure (Right (ULam (pack [s]) Nothing))
 
   build2 (GC 0) = pure UApp

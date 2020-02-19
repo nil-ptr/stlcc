@@ -3,20 +3,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 module STLCC.Parse where
 
-import qualified Control.Exception          as Except
 import           Control.Monad.Reader
 import           Data.Char
 import           Data.Functor.Identity
 import           Data.List                  as List (foldl')
 import qualified Data.List.NonEmpty         as NonEmpty
-import qualified Data.Set                   as Set
 import           Data.Text
 import           Data.Void
-import qualified Debug.Trace                as T
+
 import           STLCC.AST.Unchecked
 import           STLCC.Util.HReader
 import           STLCC.Util.Nat
 import           STLCC.Util.Vec
+
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -79,8 +78,10 @@ elabel :: String -> ErrorItem t
 elabel s = Label (NonEmpty.fromList s)
 
 ----------------------------------------------------------------------
----                             Basics                             ---
+---                              Atoms                             ---
 ----------------------------------------------------------------------
+
+
 
 --- Variables --------------------------------------------------------
 
@@ -108,14 +109,19 @@ boolLiteral :: Parser n (UExp n)
 boolLiteral = label "bool literal" . lexeme $
   try trueLit <|> falseLit
   where trueLit = do
-          string "True"
+          _ <- string "True"
           pure (UBoolE True)
         falseLit = do
-          string "False"
+          _ <- string "False"
           pure (UBoolE False)
 
 literal :: Parser n (UExp n)
 literal = label "literal" $ boolLiteral
+
+
+----------------------------------------------------------------------
+---                           Expressions                          ---
+----------------------------------------------------------------------
 
 
 --- Terms ------------------------------------------------------------
@@ -154,10 +160,10 @@ closedExpression = expression
 
 lambdaBinder :: Parser n Text
 lambdaBinder = do
-  try sob                <?> "lambda token"
+  _ <- try sob                <?> "lambda token"
   vv <- try variableName <?> "name to bind"
   -- TODO: Parse type annot, if present
-  try eob                <?> "end of binding marker"
+  _ <- try eob                <?> "end of binding marker"
   pure vv
 
   where eob = lexeme (char '.')
@@ -206,3 +212,7 @@ parseClosedExpr s =
 mkpretty :: Maybe (UExp 'Z) -> IO ()
 mkpretty (Just x) = putStrLn (pretty x)
 mkpretty Nothing  = pure ()
+
+parse :: Parser 'Z x -> String -> Text -> Either (ParseErrorBundle Text Void) x
+parse p t s = runEnv (runParserT (p <* eof) t s)
+  where runEnv = runIdentity . flip runReaderT VNil
